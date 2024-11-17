@@ -29,11 +29,11 @@ class CandleChart extends StatelessWidget {
     Key? key,
     required this.coinData,
     required this.inrRate,
-    this.backgroundColor = const Color(0xff18191d),
+    this.backgroundColor = const Color(0xffffffff),
     this.onSecondaryTap,
     this.isLine = false,
     this.hideGrid = false,
-    this.hideVolume = false,
+    this.hideVolume = true,
     this.showNowPrice = true,
     this.isTrendLine = false,
     this.isTapShowInfoDialog = true,
@@ -52,7 +52,7 @@ class CandleChart extends StatelessWidget {
   Widget build(BuildContext context) {
     ChartController.to.getCandles(
       coinData: coinData,
-      interval: '1m',
+      interval: '1',
     );
     ChartController.to.inrRate = inrRate;
 
@@ -94,7 +94,7 @@ class CandleChart extends StatelessWidget {
                     intervalAlignment ?? MainAxisAlignment.spaceAround,
                 children: [
                   intervalButton(
-                    title: '1m',
+                    title: '15min',
                     coinData: coinData,
                     intervalSelectedTextColor: intervalSelectedTextColor,
                     intervalUnselectedTextColor: intervalUnselectedTextColor,
@@ -108,26 +108,19 @@ class CandleChart extends StatelessWidget {
                     intervalTextSize: intervalTextSize,
                   ),
                   intervalButton(
+                    title: '4h',
+                    coinData: coinData,
+                    intervalSelectedTextColor: intervalSelectedTextColor,
+                    intervalUnselectedTextColor: intervalUnselectedTextColor,
+                    intervalTextSize: intervalTextSize,
+                  ),
+                  intervalButton(
                     title: '1d',
                     coinData: coinData,
                     intervalSelectedTextColor: intervalSelectedTextColor,
                     intervalUnselectedTextColor: intervalUnselectedTextColor,
                     intervalTextSize: intervalTextSize,
-                  ),
-                  intervalButton(
-                    title: '1w',
-                    coinData: coinData,
-                    intervalSelectedTextColor: intervalSelectedTextColor,
-                    intervalUnselectedTextColor: intervalUnselectedTextColor,
-                    intervalTextSize: intervalTextSize,
-                  ),
-                  intervalButton(
-                    title: '1M',
-                    coinData: coinData,
-                    intervalSelectedTextColor: intervalSelectedTextColor,
-                    intervalUnselectedTextColor: intervalUnselectedTextColor,
-                    intervalTextSize: intervalTextSize,
-                  ),
+                  )
                 ],
               ),
             ),

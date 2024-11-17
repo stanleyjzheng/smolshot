@@ -146,18 +146,17 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     // Example coin data
     Coin coinData = Coin(
-      id: '1',
+      id: 'pnut',
       image: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png',
       name: 'Bitcoin',
       shortName: 'BTC',
       price: '123456',
       lastPrice: '123456',
       percentage: '-0.5',
-      symbol: 'BTCUSDT',
-      pairWith: 'USDT',
+      symbol: 'pnut',
       highDay: '567',
       lowDay: '12',
-      decimalCurrency: 4,
+      decimalCurrency: 18,
     );
 
     return Scaffold(

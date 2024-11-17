@@ -3,6 +3,8 @@ package ohlc
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"sort"
 	"time"
@@ -40,8 +42,14 @@ func fetchHistory(symbol, period string) ([]PriceData, error) {
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	var history HistoryResponse
-	if err := json.NewDecoder(resp.Body).Decode(&history); err != nil {
+	if err := json.Unmarshal(body, &history); err != nil {
+		log.Printf("Failed to decode JSON response: %v\nResponse body: %s", err, string(body))
 		return nil, err
 	}
 
@@ -50,55 +58,83 @@ func fetchHistory(symbol, period string) ([]PriceData, error) {
 		if len(entry) < 2 {
 			continue
 		}
+		timestamp, ok1 := entry[0].(float64)
+		price, ok2 := entry[1].(float64)
+		if !ok1 || !ok2 {
+			log.Printf("Invalid data format: %v", entry)
+			continue
+		}
 		prices = append(prices, PriceData{
-			Timestamp: int64(entry[0].(float64)),
-			Price:     entry[1].(float64),
+			Timestamp: int64(timestamp),
+			Price:     price,
 		})
 	}
 	return prices, nil
 }
 
-// aggregateOHLC aggregates raw price data into OHLC candlesticks for a given interval
 func aggregateOHLC(data []PriceData, interval time.Duration) [][]interface{} {
+	if len(data) == 0 {
+		return [][]interface{}{}
+	}
+
+	// Ensure data is sorted by timestamp
 	sort.Slice(data, func(i, j int) bool {
 		return data[i].Timestamp < data[j].Timestamp
 	})
 
-	candles := [][]interface{}{}
+	var candles [][]interface{}
 	start := data[0].Timestamp
-	end := start + int64(interval.Seconds()*1000)
+	end := start + int64(interval.Milliseconds())
 	var open, high, low, close float64
+	isFirstPrice := true
 
 	for _, p := range data {
 		if p.Timestamp >= start && p.Timestamp < end {
-			if open == 0 {
+			// Aggregate within the current interval
+			if isFirstPrice {
 				open = p.Price
+				high = p.Price
+				low = p.Price
+				isFirstPrice = false
 			}
-			if p.Price > high || high == 0 {
+			if p.Price > high {
 				high = p.Price
 			}
-			if p.Price < low || low == 0 {
+			if p.Price < low {
 				low = p.Price
 			}
 			close = p.Price
 		} else {
-			if open != 0 {
-				candles = append(candles, []interface{}{start, high, low, open, close})
+			// Finalize the current candle
+			if !isFirstPrice {
+				candles = append(candles, []interface{}{start, open, high, low, close})
 			}
-			// Reset for the new interval
-			start = end
-			end = start + int64(interval.Seconds()*1000)
-			open, high, low, close = p.Price, p.Price, p.Price, p.Price
+			// Move to the next interval
+			for p.Timestamp >= end {
+				start = end
+				end += int64(interval.Milliseconds())
+			}
+			// Initialize the new interval
+			open = p.Price
+			high = p.Price
+			low = p.Price
+			close = p.Price
+			isFirstPrice = false
 		}
 	}
-	if open != 0 {
-		candles = append(candles, []interface{}{start, high, low, open, close})
+
+	// Finalize the last candle
+	if !isFirstPrice {
+		candles = append(candles, []interface{}{start, open, high, low, close})
 	}
+
 	return candles
 }
 
 // Handler processes API requests and responds with OHLC data
 func Handler(w http.ResponseWriter, r *http.Request) {
+	printf("received ohlc request")
+
 	vars := mux.Vars(r)
 	symbol := vars["symbol"]
 	interval := r.URL.Query().Get("interval")
@@ -109,23 +145,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var duration time.Duration
+	var singleTimestampDuration string
 	switch interval {
 	case "15min":
 		duration = 15 * time.Minute
-	case "1hr":
+		singleTimestampDuration = "5min"
+	case "1h":
 		duration = time.Hour
+		singleTimestampDuration = "5min"
 	case "4h":
 		duration = 4 * time.Hour
+		singleTimestampDuration = "15min"
 	case "1d":
 		duration = 24 * time.Hour
+		singleTimestampDuration = "1h"
 	default:
 		http.Error(w, "Unsupported interval", http.StatusBadRequest)
 		return
 	}
 
-	data, err := fetchHistory(symbol, "5min")
+	data, err := fetchHistory(symbol, singleTimestampDuration)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to fetch data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if len(data) == 0 {
+		http.Error(w, "No data available", http.StatusNotFound)
 		return
 	}
 

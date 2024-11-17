@@ -11,14 +11,14 @@ class ChartController extends GetxController {
   List<KLineEntity> kChartCandles = <KLineEntity>[].obs;
   List<FlSpot> lineChart = <FlSpot>[].obs;
 
-  String interval = '1m';
+  String interval = '1';
 
   double inrRate = 0.0;
 
   getCandles({required Coin coinData, required String interval}) async {
     try {
       fetchCandles(
-        symbol: coinData.symbol.toUpperCase(),
+        symbol: coinData.symbol.toLowerCase(),
         interval: interval,
       ).then(
         (value) {
@@ -28,12 +28,11 @@ class ChartController extends GetxController {
             kChartCandles.add(KLineEntity.fromCustom(
                 time: value[i].date.millisecondsSinceEpoch,
                 amount: value[i].high,
-                change: value[i].volume,
                 close: value[i].close,
                 high: value[i].high,
                 low: value[i].low,
                 open: value[i].open,
-                vol: value[i].volume,
+                vol: 0,
                 ratio: value[i].low));
 
             lineChart.add(

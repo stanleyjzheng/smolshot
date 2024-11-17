@@ -4,15 +4,19 @@ import 'package:http/http.dart' as http;
 
 import './types.dart';
 
-/// fetch candles using binance api
+/// fetch candles using api
 Future<List<Candle>> fetchCandles(
     {required String symbol, required String interval}) async {
   final uri = Uri.parse(
-      "https://api.binance.com/api/v3/klines?symbol=$symbol&interval=$interval&limit=1000");
+      "http://localhost:8080/api/v3/coins/$symbol/ohlc?interval=$interval");
   final res = await http.get(uri);
 
-  List<dynamic> data = jsonDecode(res.body);
+  if (res.statusCode == 200) {
+    List<dynamic> data = jsonDecode(res.body);
 
-  /// return candles
-  return (data).map((e) => Candle.fromJson(e)).toList();
+    /// return candles
+    return data.map((e) => Candle.fromJson(e)).toList();
+  } else {
+    throw Exception('Failed to load candles');
+  }
 }

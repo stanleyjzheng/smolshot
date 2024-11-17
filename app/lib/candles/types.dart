@@ -16,10 +16,6 @@ class Candle {
   /// Price at the end of the period
   final double close;
 
-  /// Volume is the number of shares of a
-  /// security traded during a given period of time.
-  final double volume;
-
   bool get isBull => open <= close;
 
   Candle({
@@ -28,16 +24,14 @@ class Candle {
     required this.low,
     required this.open,
     required this.close,
-    required this.volume,
   });
 
   Candle.fromJson(List<dynamic> json)
       : date = DateTime.fromMillisecondsSinceEpoch(json[0]),
-        high = double.parse(json[2]),
-        low = double.parse(json[3]),
-        open = double.parse(json[1]),
-        close = double.parse(json[4]),
-        volume = double.parse(json[5]);
+        open = json[1].toDouble(),
+        high = json[2].toDouble(),
+        low = json[3].toDouble(),
+        close = json[4].toDouble();
 }
 
 /// Coin model which holds a single coin data.
@@ -56,7 +50,6 @@ class Coin {
   String lastPrice;
   String percentage;
   String symbol;
-  String pairWith;
   String highDay;
   String lowDay;
   int decimalCurrency;
@@ -70,7 +63,6 @@ class Coin {
     required this.lastPrice,
     required this.percentage,
     required this.symbol,
-    required this.pairWith,
     required this.highDay,
     required this.lowDay,
     required this.decimalCurrency,
@@ -78,6 +70,6 @@ class Coin {
 
   @override
   String toString() {
-    return 'Coin{coinID: $id, coinImage: $image, coinName: $name, coinShortName: $shortName, coinPrice: $price, coinLastPrice: $lastPrice, coinPercentage: $percentage, coinSymbol: $symbol, coinPairWith: $pairWith, coinHighDay: $highDay, coinLowDay: $lowDay, coinDecimalCurrency: $decimalCurrency}';
+    return 'Coin{coinID: $id, coinImage: $image, coinName: $name, coinShortName: $shortName, coinPrice: $price, coinLastPrice: $lastPrice, coinPercentage: $percentage, coinSymbol: $symbol, coinHighDay: $highDay, coinLowDay: $lowDay, coinDecimalCurrency: $decimalCurrency}';
   }
 }

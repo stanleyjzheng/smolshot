@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
@@ -35,12 +36,19 @@ Map<String, dynamic> splitTimeUnitWithFullName(String input) {
   };
 }
 
+double roundToDecimals(double value, int decimals) {
+  final factor = pow(10, decimals);
+  return (value * factor).round() / factor;
+}
+
 /// fetch candles using api
 Future<List<Candle>> fetchCandles(
-    {required String symbol, required String interval}) async {
+    {required String symbol,
+    required String interval,
+    int decimals = 5}) async {
   // parse the period and number of periods
   // e.g. 1d -> 1 day, 1w -> 1 week, 1m -> 1 month
-  print(interval);
+
   final timeUnit = splitTimeUnitWithFullName(interval);
 
   final uri = Uri.parse(
@@ -50,8 +58,16 @@ Future<List<Candle>> fetchCandles(
   if (res.statusCode == 200) {
     List<dynamic> data = jsonDecode(res.body);
 
-    /// return candles
-    return data.map((e) => Candle.fromJson(e)).toList();
+    return data.map((e) {
+      return Candle(
+        date: DateTime.fromMillisecondsSinceEpoch(e[0]),
+        open: roundToDecimals(e[1].toDouble(), decimals),
+        high: roundToDecimals(e[2].toDouble(), decimals),
+        low: roundToDecimals(e[3].toDouble(), decimals),
+        close: roundToDecimals(e[4].toDouble(), decimals),
+        volume: roundToDecimals(e[5].toDouble(), decimals),
+      );
+    }).toList();
   } else {
     throw Exception('Failed to load candles');
   }

@@ -161,7 +161,7 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Solana Dashboard'),
+        title: Text('\$PNUT'),
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
@@ -177,7 +177,6 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: CandleChart(
                 coinData: coinData,
-                inrRate: 77.0,
                 intervalSelectedTextColor: Colors.red,
                 intervalTextSize: 20,
                 intervalUnselectedTextColor: Colors.black,

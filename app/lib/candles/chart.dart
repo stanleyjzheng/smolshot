@@ -6,12 +6,13 @@ import 'package:k_chart/k_chart_widget.dart';
 import './types.dart';
 import '../widgets/interval.dart';
 import './chart_controller.dart';
+import './light_chart_theme.dart';
 
 class CandleChart extends StatelessWidget {
   final Coin coinData;
-  final double inrRate;
   final Color backgroundColor;
   final Function()? onSecondaryTap;
+  final SecondaryState secondaryState;
   final bool isLine;
   final bool hideGrid;
   final bool hideVolume;
@@ -28,9 +29,9 @@ class CandleChart extends StatelessWidget {
   CandleChart({
     Key? key,
     required this.coinData,
-    required this.inrRate,
     this.backgroundColor = const Color(0xffffffff),
     this.onSecondaryTap,
+    this.secondaryState = SecondaryState.NONE,
     this.isLine = false,
     this.hideGrid = false,
     this.hideVolume = false,
@@ -38,23 +39,22 @@ class CandleChart extends StatelessWidget {
     this.isTrendLine = false,
     this.isTapShowInfoDialog = true,
     this.materialInfoDialog = true,
-    this.showInfoDialog = true,
+    this.showInfoDialog = false,
     this.intervalSelectedTextColor,
     this.intervalUnselectedTextColor,
     this.intervalTextSize,
     this.intervalAlignment,
   }) : super(key: key);
 
-  final ChartStyle chartStyle = ChartStyle();
-  final ChartColors chartColors = ChartColors();
+  final ChartStyle chartStyle = CustomChartStyle();
+  final ChartColors chartColors = CustomChartColors();
 
   @override
   Widget build(BuildContext context) {
     ChartController.to.getCandles(
       coinData: coinData,
-      interval: '1',
+      interval: '1m',
     );
-    ChartController.to.inrRate = inrRate;
 
     return GetBuilder<ChartController>(
       builder: (_) {
@@ -74,8 +74,9 @@ class CandleChart extends StatelessWidget {
                         isLine: isLine,
                         onSecondaryTap: onSecondaryTap,
                         mainState: MainState.NONE,
+                        secondaryState: secondaryState,
                         volHidden: hideVolume,
-                        fixedLength: 2,
+                        fixedLength: 10,
                         timeFormat: TimeFormat.YEAR_MONTH_DAY,
                         hideGrid: hideGrid,
                         showNowPrice: showNowPrice,

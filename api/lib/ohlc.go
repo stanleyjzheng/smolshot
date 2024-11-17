@@ -6,37 +6,42 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sort"
-	"time"
+	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
-// Candle represents OHLC data for a given time period
-type Candle struct {
-	Date  int64   `json:"date"`
-	Open  float64 `json:"open"`
-	High  float64 `json:"high"`
-	Low   float64 `json:"low"`
-	Close float64 `json:"close"`
-}
-
-// PriceData represents raw API data from Mobula
-type PriceData struct {
-	Timestamp int64   `json:"timestamp"`
-	Price     float64 `json:"price"`
-}
-
-type HistoryResponse struct {
+// OHLCVResponse represents the response structure from the CoinGecko API
+type OHLCVResponse struct {
 	Data struct {
-		PriceHistory [][]interface{} `json:"price_history"`
+		Attributes struct {
+			OHLCVList [][]interface{} `json:"ohlcv_list"`
+		} `json:"attributes"`
 	} `json:"data"`
 }
 
-// fetchHistory retrieves historical price data from the Mobula API
-func fetchHistory(symbol, period string) ([]PriceData, error) {
-	url := fmt.Sprintf("https://api.mobula.io/api/1/market/history?asset=%s&blockchain=solana&period=%s", symbol, period)
-	resp, err := http.Get(url)
+// fetchOHLCV retrieves OHLCV data from the CoinGecko API
+func fetchOHLCV(pool string, day string, aggregate string) ([][]interface{}, error) {
+	err := godotenv.Load()
+	if err != nil {
+		return nil, fmt.Errorf("error loading .env file: %v", err)
+	}
+
+	apiKey := os.Getenv("CG_PRO_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key not found in .env file")
+	}
+	url := fmt.Sprintf("https://pro-api.coingecko.com/api/v3/onchain/networks/solana/pools/%s/ohlcv/%s?aggregate=%s&currency=usd&limit=1000", pool, day, aggregate)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("x-cg-pro-api-key", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -47,137 +52,42 @@ func fetchHistory(symbol, period string) ([]PriceData, error) {
 		return nil, err
 	}
 
-	var history HistoryResponse
-	if err := json.Unmarshal(body, &history); err != nil {
+	var ohlcvResponse OHLCVResponse
+	if err := json.Unmarshal(body, &ohlcvResponse); err != nil {
 		log.Printf("Failed to decode JSON response: %v\nResponse body: %s", err, string(body))
 		return nil, err
 	}
 
-	var prices []PriceData
-	for _, entry := range history.Data.PriceHistory {
-		if len(entry) < 2 {
-			continue
-		}
-		timestamp, ok1 := entry[0].(float64)
-		price, ok2 := entry[1].(float64)
-		if !ok1 || !ok2 {
-			log.Printf("Invalid data format: %v", entry)
-			continue
-		}
-		prices = append(prices, PriceData{
-			Timestamp: int64(timestamp),
-			Price:     price,
-		})
-	}
-	return prices, nil
+	return ohlcvResponse.Data.Attributes.OHLCVList, nil
 }
 
-func aggregateOHLC(data []PriceData, interval time.Duration) [][]interface{} {
-	if len(data) == 0 {
-		return [][]interface{}{}
-	}
-
-	// Ensure data is sorted by timestamp
-	sort.Slice(data, func(i, j int) bool {
-		return data[i].Timestamp < data[j].Timestamp
-	})
-
-	var candles [][]interface{}
-	start := data[0].Timestamp
-	end := start + int64(interval.Milliseconds())
-	var open, high, low, close float64
-	isFirstPrice := true
-
-	for _, p := range data {
-		if p.Timestamp >= start && p.Timestamp < end {
-			// Aggregate within the current interval
-			if isFirstPrice {
-				open = p.Price
-				high = p.Price
-				low = p.Price
-				isFirstPrice = false
-			}
-			if p.Price > high {
-				high = p.Price
-			}
-			if p.Price < low {
-				low = p.Price
-			}
-			close = p.Price
-		} else {
-			// Finalize the current candle
-			if !isFirstPrice {
-				candles = append(candles, []interface{}{start, open, high, low, close})
-			}
-			// Move to the next interval
-			for p.Timestamp >= end {
-				start = end
-				end += int64(interval.Milliseconds())
-			}
-			// Initialize the new interval
-			open = p.Price
-			high = p.Price
-			low = p.Price
-			close = p.Price
-			isFirstPrice = false
-		}
-	}
-
-	// Finalize the last candle
-	if !isFirstPrice {
-		candles = append(candles, []interface{}{start, open, high, low, close})
-	}
-
-	return candles
-}
-
-// Handler processes API requests and responds with OHLC data
+// Handler processes API requests and responds with OHLCV data
 func Handler(w http.ResponseWriter, r *http.Request) {
-	printf("received ohlc request")
+	fmt.Printf("OHLCV Handler got request to", r.URL)
 
 	vars := mux.Vars(r)
-	symbol := vars["symbol"]
-	interval := r.URL.Query().Get("interval")
+	pool := vars["pool"]
+	day := r.URL.Query().Get("period")
+	aggregate := r.URL.Query().Get("aggregate")
 
-	if symbol == "" || interval == "" {
-		http.Error(w, "Missing symbol or interval", http.StatusBadRequest)
+	if pool == "" || day == "" || aggregate == "" {
+		http.Error(w, "Missing pool, day, aggregate", http.StatusBadRequest)
 		return
 	}
 
-	var duration time.Duration
-	var singleTimestampDuration string
-	switch interval {
-	case "15min":
-		duration = 15 * time.Minute
-		singleTimestampDuration = "5min"
-	case "1h":
-		duration = time.Hour
-		singleTimestampDuration = "5min"
-	case "4h":
-		duration = 4 * time.Hour
-		singleTimestampDuration = "15min"
-	case "1d":
-		duration = 24 * time.Hour
-		singleTimestampDuration = "1h"
-	default:
-		http.Error(w, "Unsupported interval", http.StatusBadRequest)
-		return
-	}
-
-	data, err := fetchHistory(symbol, singleTimestampDuration)
+	ohlcvList, err := fetchOHLCV(pool, day, aggregate)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to fetch data: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	if len(data) == 0 {
+	if len(ohlcvList) == 0 {
 		http.Error(w, "No data available", http.StatusNotFound)
 		return
 	}
 
-	candles := aggregateOHLC(data, duration)
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(candles); err != nil {
+	if err := json.NewEncoder(w).Encode(ohlcvList); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
 	}
 }

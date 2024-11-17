@@ -1,15 +1,16 @@
-package main
+package ohlc
 
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
-	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
+// Candle represents OHLC data for a given time period
 type Candle struct {
 	Date  int64   `json:"date"`
 	Open  float64 `json:"open"`
@@ -30,6 +31,7 @@ type HistoryResponse struct {
 	} `json:"data"`
 }
 
+// fetchHistory retrieves historical price data from the Mobula API
 func fetchHistory(symbol, period string) ([]PriceData, error) {
 	url := fmt.Sprintf("https://api.mobula.io/api/1/market/history?asset=%s&blockchain=solana&period=%s", symbol, period)
 	resp, err := http.Get(url)
@@ -56,8 +58,8 @@ func fetchHistory(symbol, period string) ([]PriceData, error) {
 	return prices, nil
 }
 
+// aggregateOHLC aggregates raw price data into OHLC candlesticks for a given interval
 func aggregateOHLC(data []PriceData, interval time.Duration) [][]interface{} {
-	// Sort by timestamp
 	sort.Slice(data, func(i, j int) bool {
 		return data[i].Timestamp < data[j].Timestamp
 	})
@@ -95,16 +97,12 @@ func aggregateOHLC(data []PriceData, interval time.Duration) [][]interface{} {
 	return candles
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v3/coins/")
-	parts := strings.Split(path, "/ohlc")
-	if len(parts) != 2 {
-		http.Error(w, "Invalid endpoint", http.StatusBadRequest)
-		return
-	}
-
-	symbol := parts[0]
+// Handler processes API requests and responds with OHLC data
+func Handler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	symbol := vars["symbol"]
 	interval := r.URL.Query().Get("interval")
+
 	if symbol == "" || interval == "" {
 		http.Error(w, "Missing symbol or interval", http.StatusBadRequest)
 		return
@@ -136,10 +134,4 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(candles); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
 	}
-}
-
-func main() {
-	http.HandleFunc("/api/v3/coins/", handler)
-	log.Println("Starting server on :8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -33,7 +33,7 @@ class CandleChart extends StatelessWidget {
     this.onSecondaryTap,
     this.isLine = false,
     this.hideGrid = false,
-    this.hideVolume = true,
+    this.hideVolume = false,
     this.showNowPrice = true,
     this.isTrendLine = false,
     this.isTapShowInfoDialog = true,
@@ -94,7 +94,14 @@ class CandleChart extends StatelessWidget {
                     intervalAlignment ?? MainAxisAlignment.spaceAround,
                 children: [
                   intervalButton(
-                    title: '15min',
+                    title: '1m',
+                    coinData: coinData,
+                    intervalSelectedTextColor: intervalSelectedTextColor,
+                    intervalUnselectedTextColor: intervalUnselectedTextColor,
+                    intervalTextSize: intervalTextSize,
+                  ),
+                  intervalButton(
+                    title: '15m',
                     coinData: coinData,
                     intervalSelectedTextColor: intervalSelectedTextColor,
                     intervalUnselectedTextColor: intervalUnselectedTextColor,
@@ -120,7 +127,7 @@ class CandleChart extends StatelessWidget {
                     intervalSelectedTextColor: intervalSelectedTextColor,
                     intervalUnselectedTextColor: intervalUnselectedTextColor,
                     intervalTextSize: intervalTextSize,
-                  )
+                  ),
                 ],
               ),
             ),

@@ -3,11 +3,11 @@ import './candles/types.dart';
 import './candles/chart.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(SmolShot());
 }
 
 // Root of the application
-class MyApp extends StatelessWidget {
+class SmolShot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -146,7 +146,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     // Example coin data
     Coin coinData = Coin(
-      id: 'pnut',
+      id: 'AS98jKn9RdGYn3MzAiTmUDDPcoWCjdhDfYgwsX8dppP2',
       image: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png',
       name: 'Bitcoin',
       shortName: 'BTC',

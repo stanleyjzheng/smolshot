@@ -18,7 +18,7 @@ class ChartController extends GetxController {
   getCandles({required Coin coinData, required String interval}) async {
     try {
       fetchCandles(
-        symbol: coinData.symbol.toLowerCase(),
+        symbol: coinData.id,
         interval: interval,
       ).then(
         (value) {
@@ -28,11 +28,12 @@ class ChartController extends GetxController {
             kChartCandles.add(KLineEntity.fromCustom(
                 time: value[i].date.millisecondsSinceEpoch,
                 amount: value[i].high,
+                change: value[i].high - value[i].low,
                 close: value[i].close,
                 high: value[i].high,
                 low: value[i].low,
                 open: value[i].open,
-                vol: 0,
+                vol: value[i].volume,
                 ratio: value[i].low));
 
             lineChart.add(

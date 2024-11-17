@@ -16,6 +16,10 @@ class Candle {
   /// Price at the end of the period
   final double close;
 
+  /// Volume is the number of shares of a
+  /// security traded during a given period of time.
+  final double volume;
+
   bool get isBull => open <= close;
 
   Candle({
@@ -24,6 +28,7 @@ class Candle {
     required this.low,
     required this.open,
     required this.close,
+    required this.volume,
   });
 
   Candle.fromJson(List<dynamic> json)
@@ -31,7 +36,8 @@ class Candle {
         open = json[1].toDouble(),
         high = json[2].toDouble(),
         low = json[3].toDouble(),
-        close = json[4].toDouble();
+        close = json[4].toDouble(),
+        volume = json[5].toDouble();
 }
 
 /// Coin model which holds a single coin data.

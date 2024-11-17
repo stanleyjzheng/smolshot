@@ -1,6 +1,7 @@
-package lib
+package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -50,7 +51,9 @@ func SetPrivateKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	keypair, err := types.AccountFromBase58(payload.PrivateKey)
+	privateKeyByteArray, err := hex.DecodeString(payload.PrivateKey)
+
+	keypair, err := types.AccountFromBytes(privateKeyByteArray)
 	if err != nil {
 		http.Error(w, "Invalid private key", http.StatusBadRequest)
 		return
@@ -67,6 +70,7 @@ func SetPrivateKeyHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = db.NamedExec(query, params)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
+		log.Println(err)
 		return
 	}
 
@@ -75,7 +79,7 @@ func SetPrivateKeyHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
+func GetSolBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
 		http.Error(w, "Missing user_id parameter", http.StatusBadRequest)
@@ -105,6 +109,47 @@ func GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 		"user_id":    userID,
 		"public_key": publicKey,
 		"balance":    balance,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func GetTokenBalanceHandler(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	mintAddress := r.URL.Query().Get("mint_address")
+	if userID == "" || mintAddress == "" {
+		http.Error(w, "Missing user_id or mint_address parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Fetch the user's public key from the accounts table
+	var publicKey string
+	query := `SELECT public_key FROM accounts WHERE user_id = $1`
+	err := db.Get(&publicKey, query, userID)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// Connect to Solana RPC to fetch the token accounts
+	c := client.NewClient(os.Getenv("SOLANA_RPC_URL"))
+	tokenAccounts, err := c.GetTokenAccountsByOwnerByMint(r.Context(), publicKey, mintAddress)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to fetch token accounts: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	var balance uint64
+	for _, account := range tokenAccounts {
+		balance += account.Amount
+	}
+
+	response := map[string]string{
+		"user_id":      userID,
+		"public_key":   publicKey,
+		"mint_address": mintAddress,
+		"balance":      fmt.Sprintf("%d", balance),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

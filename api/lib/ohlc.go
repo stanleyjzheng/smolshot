@@ -1,4 +1,4 @@
-package ohlc
+package lib
 
 import (
 	"encoding/json"

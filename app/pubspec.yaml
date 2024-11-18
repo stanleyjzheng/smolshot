@@ -38,6 +38,8 @@ dependencies:
   fl_chart: ^0.69.0
   get: ^4.6.6
   http: ^1.2.2
+  platform_device_id: ^1.0.1
+  url_launcher: ^6.0.9
 
 dev_dependencies:
   flutter_test:

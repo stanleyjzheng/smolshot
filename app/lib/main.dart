@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:platform_device_id/platform_device_id.dart';
+import 'package:url_launcher/url_launcher.dart';
 import './candles/types.dart';
 import './candles/chart.dart';
 
@@ -29,15 +33,45 @@ class PrivateKeyPage extends StatefulWidget {
 class _PrivateKeyPageState extends State<PrivateKeyPage> {
   final TextEditingController _privateKeyController = TextEditingController();
 
-  void _submitPrivateKey() {
+  void _submitPrivateKey() async {
     String privateKey = _privateKeyController.text.trim();
     if (privateKey.isNotEmpty) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomePage(privateKey: privateKey),
-        ),
+      String? deviceId = await PlatformDeviceId.getDeviceId;
+
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/api/v3/set_private_key'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, String>{
+          'user_id': deviceId ?? 'unknown_device',
+          'private_key': privateKey,
+        }),
       );
+
+      if (response.statusCode == 200) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(privateKey: privateKey),
+          ),
+        );
+      } else {
+        // Show an alert if the request failed
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text('Error'),
+            content: Text('Failed to save private key. Please try again.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
     } else {
       // Show an alert if the private key is empty
       showDialog(
@@ -107,13 +141,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   double _balance = 0.0;
   // Placeholder for chart data
-  List<double> _chartData = [];
+  final TextEditingController _amountController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchBalance();
-    _fetchChartData();
   }
 
   // Fetch user's balance from your API
@@ -124,22 +157,89 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Fetch chart data from your API
-  void _fetchChartData() async {
-    // TODO: Implement API call to fetch chart data
-    setState(() {
-      _chartData = [1, 2, 3, 4, 5]; // Placeholder data
-    });
+  Future<void> _performTransaction(String action) async {
+    String? deviceId = await PlatformDeviceId.getDeviceId;
+    String amount = _amountController.text.trim();
+
+    if (amount.isEmpty) {
+      // Show an alert if the amount is empty
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Please enter an amount.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('http://localhost:8080/api/v3/swap_token'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, dynamic>{
+        'user_id': deviceId,
+        'input_mint': 'So11111111111111111111111111111111111111112',
+        'output_mint': 'FjbRf3EcoG13CKrpif9c2BuJuyy3T7r6dsp9LKMvpump',
+        'amount': (double.parse(amount) * 1000000).toInt(),
+        'slippage_bps': 100,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      final transactionSignature = responseData['transaction_signature'];
+      final url = 'https://solscan.io/tx/$transactionSignature';
+
+      // Show a dialog with the transaction link
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Transaction Successful'),
+          content: Text('Transaction Signature: $transactionSignature'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Open the transaction link
+                launch(url);
+              },
+              child: Text('View on Solscan'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Show an alert if the transaction failed
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Transaction failed. Please try again.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _buyCoin() {
-    // TODO: Implement buy functionality
-    print('Buy button pressed');
+    _performTransaction('buy');
   }
 
   void _sellCoin() {
-    // TODO: Implement sell functionality
-    print('Sell button pressed');
+    _performTransaction('sell');
   }
 
   @override
@@ -181,6 +281,16 @@ class _HomePageState extends State<HomePage> {
                 intervalTextSize: 20,
                 intervalUnselectedTextColor: Colors.black,
               ),
+            ),
+            SizedBox(height: 20),
+            // Amount input field
+            TextField(
+              controller: _amountController,
+              decoration: InputDecoration(
+                labelText: 'Amount (SOL)',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
             ),
             SizedBox(height: 20),
             // Buy and Sell buttons

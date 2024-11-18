@@ -10,12 +10,14 @@ require (
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
 	github.com/blocto/solana-go-sdk v1.30.0 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/gagliardetto/binary v0.8.0 // indirect
 	github.com/gagliardetto/solana-go v1.12.0 // indirect
 	github.com/gagliardetto/treeout v0.1.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/rpc v1.2.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/ilkamo/jupiter-go v0.0.17 // indirect
 	github.com/jmoiron/sqlx v1.4.0 // indirect
@@ -32,6 +34,7 @@ require (
 	github.com/mostynb/zstdpool-freelist v0.0.0-20201229113212-927304c0c3b1 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/streamingfast/logging v0.0.0-20230608130331-f22c91403091 // indirect
 	github.com/weeaa/jito-go v0.0.0-20241115152045-fad8960a3d5c // indirect
 	go.mongodb.org/mongo-driver v1.17.1 // indirect

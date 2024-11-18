@@ -139,22 +139,48 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  double _balance = 0.0;
-  // Placeholder for chart data
+  double _solBalance = 0.0;
+  double _pnutBalance = 0.0;
   final TextEditingController _amountController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchBalance();
+    _fetchBalances();
   }
 
-  // Fetch user's balance from your API
-  void _fetchBalance() async {
-    // TODO: Implement API call to fetch balance
-    setState(() {
-      _balance = 100.0; // Placeholder value
-    });
+  // Fetch user's balances from your API
+  void _fetchBalances() async {
+    String? deviceId = await PlatformDeviceId.getDeviceId;
+
+    if (deviceId != null) {
+      // Fetch SOL balance
+      final solResponse = await http.get(
+        Uri.parse(
+            'http://localhost:8080/api/v3/get_sol_balance?user_id=$deviceId'),
+      );
+
+      if (solResponse.statusCode == 200) {
+        final solData = jsonDecode(solResponse.body);
+        setState(() {
+          _solBalance = double.parse(solData['balance'].split(' ')[0]);
+        });
+      }
+
+      // Fetch PNUT balance
+      final pnutResponse = await http.get(
+        Uri.parse(
+            'http://localhost:8080/api/v3/get_token_balance?user_id=$deviceId&mint_address=7jYfnjn3jHWmUhhgfkZ9uUEKroH3Zz1BvF8RmVQHm86D'),
+      );
+
+      if (pnutResponse.statusCode == 200) {
+        final pnutData = jsonDecode(pnutResponse.body);
+        setState(() {
+          _pnutBalance = double.parse(pnutData['balance']) /
+              1000000; // Assuming PNUT balance is in micro units
+        });
+      }
+    }
   }
 
   Future<void> _performTransaction(String action) async {
@@ -187,7 +213,7 @@ class _HomePageState extends State<HomePage> {
       body: jsonEncode(<String, dynamic>{
         'user_id': deviceId,
         'input_mint': 'So11111111111111111111111111111111111111112',
-        'output_mint': 'FjbRf3EcoG13CKrpif9c2BuJuyy3T7r6dsp9LKMvpump',
+        'output_mint': '7jYfnjn3jHWmUhhgfkZ9uUEKroH3Zz1BvF8RmVQHm86D',
         'amount': (double.parse(amount) * 1000000).toInt(),
         'slippage_bps': 100,
       }),
@@ -267,9 +293,15 @@ class _HomePageState extends State<HomePage> {
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Display user's balance
+            // Display user's SOL balance
             Text(
-              'Balance: \$$_balance',
+              'SOL Balance: $_solBalance SOL',
+              style: TextStyle(fontSize: 24),
+            ),
+            SizedBox(height: 10),
+            // Display user's PNUT balance
+            Text(
+              'PNUT Balance: $_pnutBalance PNUT',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
